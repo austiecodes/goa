@@ -10,7 +10,6 @@
 # build
 build/
 .build/
-goa
 
 # logs
 logs/
