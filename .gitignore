@@ -1,0 +1,17 @@
+# system
+
+.DS_Store
+
+# editor
+.vscode/
+.cursor/
+.idea/
+
+# build
+build/
+.build/
+goa
+
+# logs
+logs/
+
