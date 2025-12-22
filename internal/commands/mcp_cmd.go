@@ -7,4 +7,3 @@ import (
 func init() {
 	rootCmd.AddCommand(mcpcmd.McpCmd)
 }
-
