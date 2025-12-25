@@ -35,10 +35,11 @@ func createMainMenu() list.Model {
 func createProviderList() list.Model {
 	items := []list.Item{
 		MenuItem{title: consts.ProviderOpenAI, desc: "OpenAI API (GPT models)"},
+		MenuItem{title: consts.ProviderGoogle, desc: "Google Gemini API (GEMINI models)"},
 	}
 
 	delegate := list.NewDefaultDelegate()
-	l := list.New(items, delegate, 60, 10)
+	l := list.New(items, delegate, 60, 15)
 	l.Title = "Select Provider"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
@@ -46,7 +47,7 @@ func createProviderList() list.Model {
 	return l
 }
 
-func createProviderConfigInputs(config *utils.Config) []textinput.Model {
+func createProviderConfigInputs(config *utils.Config, provider string) []textinput.Model {
 	inputs := make([]textinput.Model, 2)
 
 	// API Key input
@@ -56,17 +57,29 @@ func createProviderConfigInputs(config *utils.Config) []textinput.Model {
 	inputs[0].EchoCharacter = '*'
 	inputs[0].CharLimit = 256
 	inputs[0].Width = 50
-	if config.Providers.OpenAI.APIKey != "" {
-		inputs[0].SetValue(config.Providers.OpenAI.APIKey)
-	}
 
 	// Base URL input
 	inputs[1] = textinput.New()
-	inputs[1].Placeholder = consts.DefaultBaseURL
 	inputs[1].CharLimit = 256
 	inputs[1].Width = 50
-	if config.Providers.OpenAI.BaseURL != "" {
-		inputs[1].SetValue(config.Providers.OpenAI.BaseURL)
+
+	var apiKey, baseURL string
+	switch provider {
+	case consts.ProviderOpenAI:
+		inputs[1].Placeholder = consts.DefaultBaseURL
+		apiKey = config.Providers.OpenAI.APIKey
+		baseURL = config.Providers.OpenAI.BaseURL
+	case consts.ProviderGoogle:
+		inputs[1].Placeholder = "(optional)"
+		apiKey = config.Providers.Google.APIKey
+		baseURL = config.Providers.Google.BaseURL
+	}
+
+	if apiKey != "" {
+		inputs[0].SetValue(apiKey)
+	}
+	if baseURL != "" {
+		inputs[1].SetValue(baseURL)
 	}
 
 	return inputs

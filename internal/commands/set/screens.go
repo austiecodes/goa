@@ -64,13 +64,10 @@ func (m *Model) updateProviderSelect(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "enter":
 			selected := m.List.SelectedItem().(MenuItem)
-			if selected.Title() == consts.ProviderOpenAI {
-				m.TextInputs = createProviderConfigInputs(m.Config)
-				m.FocusedInput = 0
-				m.Screen = ScreenProviderConfig
-				return *m, m.TextInputs[0].Focus()
-			}
-			return *m, nil
+			m.TextInputs = createProviderConfigInputs(m.Config, selected.Title())
+			m.FocusedInput = 0
+			m.Screen = ScreenProviderConfig
+			return *m, m.TextInputs[0].Focus()
 		}
 	}
 
@@ -103,8 +100,15 @@ func (m *Model) updateProviderConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return *m, nil
 			}
 
-			m.Config.Providers.OpenAI.APIKey = apiKey
-			m.Config.Providers.OpenAI.BaseURL = baseURL
+			provider := m.List.SelectedItem().(MenuItem).Title()
+			switch provider {
+			case consts.ProviderOpenAI:
+				m.Config.Providers.OpenAI.APIKey = apiKey
+				m.Config.Providers.OpenAI.BaseURL = baseURL
+			case consts.ProviderGoogle:
+				m.Config.Providers.Google.APIKey = apiKey
+				m.Config.Providers.Google.BaseURL = baseURL
+			}
 
 			return *m, saveConfig(m.Config)
 		}
@@ -240,7 +244,8 @@ func (m *Model) renderView() string {
 		s.WriteString(m.List.View())
 
 	case ScreenProviderConfig:
-		s.WriteString(TitleStyle.Render("Configure OpenAI Provider"))
+		provider := m.List.SelectedItem().(MenuItem).Title()
+		s.WriteString(TitleStyle.Render(fmt.Sprintf("Configure %s Provider", provider)))
 		s.WriteString("\n\n")
 		for i, input := range m.TextInputs {
 			label := ""
@@ -248,7 +253,7 @@ func (m *Model) renderView() string {
 			case 0:
 				label = "API Key (required)"
 			case 1:
-				label = "Base URL (optional, default: OpenAI API)"
+				label = "Base URL (optional, default: Provider Default)"
 			}
 			s.WriteString(InputLabelStyle.Render(label))
 			s.WriteString("\n")

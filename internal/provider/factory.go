@@ -5,6 +5,7 @@ import (
 
 	"github.com/austiecodes/goa/internal/client"
 	"github.com/austiecodes/goa/internal/consts"
+	googleprov "github.com/austiecodes/goa/internal/provider/google"
 	openaiprov "github.com/austiecodes/goa/internal/provider/openai"
 	"github.com/austiecodes/goa/internal/utils"
 )
@@ -21,6 +22,12 @@ func NewQueryClient(cfg *utils.Config, providerName string) (client.QueryClient,
 			baseURL = consts.DefaultBaseURL
 		}
 		return openaiprov.NewQueryClient(openaiCfg.APIKey, baseURL), nil
+	case consts.ProviderGoogle:
+		googleCfg := cfg.Providers.Google
+		if googleCfg.APIKey == "" {
+			return nil, fmt.Errorf("Google API key not configured. Please configure provider first")
+		}
+		return googleprov.NewQueryClient(googleCfg.APIKey, googleCfg.BaseURL), nil
 
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", providerName)
@@ -40,6 +47,12 @@ func NewEmbeddingClient(cfg *utils.Config, providerName string) (client.Embeddin
 			baseURL = consts.DefaultBaseURL
 		}
 		return openaiprov.NewEmbeddingClient(openaiCfg.APIKey, baseURL), nil
+	case consts.ProviderGoogle:
+		googleCfg := cfg.Providers.Google
+		if googleCfg.APIKey == "" {
+			return nil, fmt.Errorf("Google API key not configured. Please configure provider first")
+		}
+		return googleprov.NewEmbeddingClient(googleCfg.APIKey, googleCfg.BaseURL), nil
 
 	default:
 		return nil, fmt.Errorf("unsupported embedding provider: %s", providerName)
