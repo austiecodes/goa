@@ -17,9 +17,16 @@ type OpenAIProviderConfig struct {
 	BaseURL string `json:"base_url,omitempty"`
 }
 
+// GoogleProviderConfig represents the Google provider configuration
+type GoogleProviderConfig struct {
+	APIKey  string `json:"api_key"`
+	BaseURL string `json:"base_url,omitempty"`
+}
+
 // ProviderConfigs holds all provider configurations
 type ProviderConfigs struct {
 	OpenAI OpenAIProviderConfig `json:"openai"`
+	Google GoogleProviderConfig `json:"google"`
 }
 
 // ModelConfig represents the model section in config
@@ -61,6 +68,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Providers: ProviderConfigs{
 			OpenAI: OpenAIProviderConfig{},
+			Google: GoogleProviderConfig{},
 		},
 		Model: ModelConfig{
 			ChatModel: &types.Model{
@@ -209,6 +217,18 @@ func GetOpenAIConfig() (*OpenAIProviderConfig, error) {
 	}
 
 	return &openaiConfig, nil
+}
+
+// GetGoogleConfig returns the Google provider configuration with defaults applied
+func GetGoogleConfig() (*GoogleProviderConfig, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	googleConfig := config.Providers.Google
+
+	return &googleConfig, nil
 }
 
 // GetDebugMode returns whether debug mode is enabled
