@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"strings"
 
 	"github.com/austiecodes/goa/internal/client"
 	"github.com/austiecodes/goa/internal/types"
@@ -227,7 +228,7 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	}
 	var models []string
 	for _, m := range page.Items {
-		models = append(models, m.Name)
+		models = append(models, strings.TrimPrefix(m.Name, "models/"))
 	}
 	return models, nil
 }

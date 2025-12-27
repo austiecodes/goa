@@ -127,6 +127,7 @@ func (m *Model) updateModelProviderSelect(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			selected := m.List.SelectedItem().(MenuItem)
 			providerID := selected.Title()
+			m.SelectedProvider = providerID
 			return *m, loadModelsForProvider(providerID, m.Config)
 		}
 	}
@@ -145,7 +146,7 @@ func (m *Model) updateModelSelect(msg tea.Msg) (tea.Model, tea.Cmd) {
 			modelID := selected.Title()
 
 			newModel := &types.Model{
-				Provider: consts.ProviderOpenAI,
+				Provider: m.SelectedProvider,
 				ModelID:  modelID,
 			}
 

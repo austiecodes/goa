@@ -1,9 +1,9 @@
 package set
 
 import (
+	"github.com/austiecodes/goa/internal/utils"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/austiecodes/goa/internal/utils"
 )
 
 // Screen represents the current TUI screen
@@ -41,16 +41,17 @@ func (i MenuItem) FilterValue() string { return i.title }
 
 // Model is the Bubble Tea model for the set command
 type Model struct {
-	Screen       Screen
-	Config       *utils.Config
-	List         list.Model
-	TextInputs   []textinput.Model
-	FocusedInput int
-	ModelType    ModelType
-	Err          error
-	Quitting     bool
-	Width        int
-	Height       int
+	Screen           Screen
+	Config           *utils.Config
+	List             list.Model
+	TextInputs       []textinput.Model
+	FocusedInput     int
+	ModelType        ModelType
+	Err              error
+	Quitting         bool
+	Width            int
+	Height           int
+	SelectedProvider string
 }
 
 // ModelsLoadedMsg is sent when models are loaded from API
@@ -63,4 +64,3 @@ type ModelsLoadedMsg struct {
 type ConfigSavedMsg struct {
 	Err error
 }
-
