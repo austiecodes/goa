@@ -5,6 +5,7 @@ import (
 
 	"github.com/austiecodes/goa/internal/client"
 	"github.com/austiecodes/goa/internal/consts"
+	anthropicprov "github.com/austiecodes/goa/internal/provider/anthropic"
 	googleprov "github.com/austiecodes/goa/internal/provider/google"
 	openaiprov "github.com/austiecodes/goa/internal/provider/openai"
 	"github.com/austiecodes/goa/internal/utils"
@@ -28,6 +29,13 @@ func NewQueryClient(cfg *utils.Config, providerName string) (client.QueryClient,
 			return nil, fmt.Errorf("Google API key not configured. Please configure provider first")
 		}
 		return googleprov.NewQueryClient(googleCfg.APIKey, googleCfg.BaseURL), nil
+	case consts.ProviderAnthropic:
+		anthropicCfg := cfg.Providers.Anthropic
+		if anthropicCfg.APIKey == "" {
+			return nil, fmt.Errorf("Anthropic API key not configured. Please configure provider first")
+		}
+		// Anthropic SDK handles base URL internally via options if provided.
+		return anthropicprov.NewQueryClient(anthropicCfg.APIKey, anthropicCfg.BaseURL), nil
 
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", providerName)
@@ -53,6 +61,7 @@ func NewEmbeddingClient(cfg *utils.Config, providerName string) (client.Embeddin
 			return nil, fmt.Errorf("Google API key not configured. Please configure provider first")
 		}
 		return googleprov.NewEmbeddingClient(googleCfg.APIKey, googleCfg.BaseURL), nil
+	// Anthropic doesn't support embeddings officially in the same way or requested yet.
 
 	default:
 		return nil, fmt.Errorf("unsupported embedding provider: %s", providerName)

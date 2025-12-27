@@ -108,6 +108,9 @@ func (m *Model) updateProviderConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case consts.ProviderGoogle:
 				m.Config.Providers.Google.APIKey = apiKey
 				m.Config.Providers.Google.BaseURL = baseURL
+			case consts.ProviderAnthropic:
+				m.Config.Providers.Anthropic.APIKey = apiKey
+				m.Config.Providers.Anthropic.BaseURL = baseURL
 			}
 
 			return *m, saveConfig(m.Config)

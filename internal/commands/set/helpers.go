@@ -36,6 +36,7 @@ func createProviderList() list.Model {
 	items := []list.Item{
 		MenuItem{title: consts.ProviderOpenAI, desc: "OpenAI API (GPT models)"},
 		MenuItem{title: consts.ProviderGoogle, desc: "Google Gemini API (GEMINI models)"},
+		MenuItem{title: consts.ProviderAnthropic, desc: "Anthropic API (Claude models)"},
 	}
 
 	delegate := list.NewDefaultDelegate()
@@ -73,6 +74,10 @@ func createProviderConfigInputs(config *utils.Config, provider string) []textinp
 		inputs[1].Placeholder = "(optional)"
 		apiKey = config.Providers.Google.APIKey
 		baseURL = config.Providers.Google.BaseURL
+	case consts.ProviderAnthropic:
+		inputs[1].Placeholder = "(optional)"
+		apiKey = config.Providers.Anthropic.APIKey
+		baseURL = config.Providers.Anthropic.BaseURL
 	}
 
 	if apiKey != "" {

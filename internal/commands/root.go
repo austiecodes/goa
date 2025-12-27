@@ -47,7 +47,7 @@ func Execute() {
 func runQuery(query string) error {
 	config, err := utils.LoadConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	if config.Model.ChatModel == nil {
@@ -60,13 +60,13 @@ func runQuery(query string) error {
 	// Create provider client
 	c, err := provider.NewQueryClient(config, providerName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create query client: %w", err)
 	}
 
 	// Call the provider with streaming
 	stream, err := c.ChatStream(context.Background(), model, query)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start chat stream: %w", err)
 	}
 	defer stream.Close()
 
@@ -74,10 +74,10 @@ func runQuery(query string) error {
 	for stream.Next() {
 		chunk := stream.GetChunk()
 		fmt.Fprint(os.Stdout, chunk)
-		os.Stdout.Sync() // Force flush to ensure immediate output
+		os.Stdout.Sync()
 	}
 	if err := stream.Err(); err != nil {
-		return err
+		return fmt.Errorf("stream error: %w", err)
 	}
 
 	fmt.Println()

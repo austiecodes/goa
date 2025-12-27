@@ -23,10 +23,17 @@ type GoogleProviderConfig struct {
 	BaseURL string `json:"base_url,omitempty"`
 }
 
+// AnthropicProviderConfig represents the Anthropic provider configuration
+type AnthropicProviderConfig struct {
+	APIKey  string `json:"api_key"`
+	BaseURL string `json:"base_url,omitempty"`
+}
+
 // ProviderConfigs holds all provider configurations
 type ProviderConfigs struct {
-	OpenAI OpenAIProviderConfig `json:"openai"`
-	Google GoogleProviderConfig `json:"google"`
+	OpenAI    OpenAIProviderConfig    `json:"openai"`
+	Google    GoogleProviderConfig    `json:"google"`
+	Anthropic AnthropicProviderConfig `json:"anthropic"`
 }
 
 // ModelConfig represents the model section in config
@@ -67,8 +74,9 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Providers: ProviderConfigs{
-			OpenAI: OpenAIProviderConfig{},
-			Google: GoogleProviderConfig{},
+			OpenAI:    OpenAIProviderConfig{},
+			Google:    GoogleProviderConfig{},
+			Anthropic: AnthropicProviderConfig{},
 		},
 		Model: ModelConfig{
 			ChatModel: &types.Model{
@@ -229,6 +237,18 @@ func GetGoogleConfig() (*GoogleProviderConfig, error) {
 	googleConfig := config.Providers.Google
 
 	return &googleConfig, nil
+}
+
+// GetAnthropicConfig returns the Anthropic provider configuration with defaults applied
+func GetAnthropicConfig() (*AnthropicProviderConfig, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	anthropicConfig := config.Providers.Anthropic
+
+	return &anthropicConfig, nil
 }
 
 // GetDebugMode returns whether debug mode is enabled
