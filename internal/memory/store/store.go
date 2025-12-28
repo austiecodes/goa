@@ -2,11 +2,14 @@ package store
 
 import (
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +19,40 @@ import (
 	"github.com/austiecodes/goa/internal/memory/memtypes"
 	"github.com/austiecodes/goa/internal/memory/memutils"
 )
+
+//go:embed sql/schema.sql
+var schemaSQL string
+
+//go:embed sql/queries.sql
+var queriesSQL string
+
+// queries holds parsed SQL queries by name
+var queries map[string]string
+
+func init() {
+	queries = parseQueries(queriesSQL)
+}
+
+// parseQueries extracts named queries from a SQL file.
+// Queries are marked with "-- name: QueryName" comments.
+func parseQueries(content string) map[string]string {
+	result := make(map[string]string)
+	re := regexp.MustCompile(`(?m)^--\s*name:\s*(\w+)\s*$`)
+	matches := re.FindAllStringSubmatchIndex(content, -1)
+
+	for i, match := range matches {
+		name := content[match[2]:match[3]]
+		start := match[1]
+		end := len(content)
+		if i+1 < len(matches) {
+			end = matches[i+1][0]
+		}
+		query := strings.TrimSpace(content[start:end])
+		result[name] = query
+	}
+
+	return result
+}
 
 // Re-export types from memtypes for convenience
 type MemoryItem = memtypes.MemoryItem
@@ -89,98 +126,9 @@ func getDBPath() (string, error) {
 
 // initSchema creates the database tables if they don't exist.
 func (s *Store) initSchema() error {
-	// Create memories table for preference/fact storage with embeddings
-	memoriesSchema := `
-	CREATE TABLE IF NOT EXISTS memories (
-		id TEXT PRIMARY KEY,
-		text TEXT NOT NULL,
-		tags TEXT,
-		source TEXT NOT NULL,
-		confidence REAL NOT NULL,
-		created_at INTEGER NOT NULL,
-		provider TEXT NOT NULL,
-		model_id TEXT NOT NULL,
-		dim INTEGER NOT NULL,
-		embedding BLOB NOT NULL
-	);
-	CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at);
-	`
-
-	if _, err := s.db.Exec(memoriesSchema); err != nil {
-		return fmt.Errorf("failed to create memories table: %w", err)
+	if _, err := s.db.Exec(schemaSQL); err != nil {
+		return fmt.Errorf("failed to initialize schema: %w", err)
 	}
-
-	// Create history table for conversation turns with FTS5 index
-	historySchema := `
-	CREATE TABLE IF NOT EXISTS history (
-		id TEXT PRIMARY KEY,
-		role TEXT NOT NULL,
-		content TEXT NOT NULL,
-		created_at INTEGER NOT NULL,
-		session_id TEXT
-	);
-	CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at);
-	CREATE INDEX IF NOT EXISTS idx_history_session ON history(session_id);
-	`
-
-	if _, err := s.db.Exec(historySchema); err != nil {
-		return fmt.Errorf("failed to create history table: %w", err)
-	}
-
-	// Create FTS5 virtual table for full-text search on history
-	historyFTSSchema := `
-	CREATE VIRTUAL TABLE IF NOT EXISTS history_fts USING fts5(
-		content,
-		content='history',
-		content_rowid='rowid'
-	);
-
-	-- Triggers to keep FTS index in sync with history table
-	CREATE TRIGGER IF NOT EXISTS history_ai AFTER INSERT ON history BEGIN
-		INSERT INTO history_fts(rowid, content) VALUES (NEW.rowid, NEW.content);
-	END;
-
-	CREATE TRIGGER IF NOT EXISTS history_ad AFTER DELETE ON history BEGIN
-		INSERT INTO history_fts(history_fts, rowid, content) VALUES('delete', OLD.rowid, OLD.content);
-	END;
-
-	CREATE TRIGGER IF NOT EXISTS history_au AFTER UPDATE ON history BEGIN
-		INSERT INTO history_fts(history_fts, rowid, content) VALUES('delete', OLD.rowid, OLD.content);
-		INSERT INTO history_fts(rowid, content) VALUES (NEW.rowid, NEW.content);
-	END;
-	`
-
-	if _, err := s.db.Exec(historyFTSSchema); err != nil {
-		return fmt.Errorf("failed to create history FTS index: %w", err)
-	}
-
-	// Create FTS5 virtual table for full-text search on memories
-	memoryFTSSchema := `
-	CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
-		text,
-		content='memories',
-		content_rowid='rowid'
-	);
-
-	-- Triggers to keep FTS index in sync with memories table
-	CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
-		INSERT INTO memories_fts(rowid, text) VALUES (NEW.rowid, NEW.text);
-	END;
-
-	CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
-		INSERT INTO memories_fts(memories_fts, rowid, text) VALUES('delete', OLD.rowid, OLD.text);
-	END;
-
-	CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
-		INSERT INTO memories_fts(memories_fts, rowid, text) VALUES('delete', OLD.rowid, OLD.text);
-		INSERT INTO memories_fts(rowid, text) VALUES (NEW.rowid, NEW.text);
-	END;
-	`
-
-	if _, err := s.db.Exec(memoryFTSSchema); err != nil {
-		return fmt.Errorf("failed to create memories FTS index: %w", err)
-	}
-
 	return nil
 }
 
@@ -200,10 +148,8 @@ func (s *Store) SaveMemory(item *MemoryItem) error {
 
 	embeddingBytes := VectorToBytes(item.Embedding)
 
-	_, err = s.db.Exec(`
-		INSERT INTO memories (id, text, tags, source, confidence, created_at, provider, model_id, dim, embedding)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, item.ID, item.Text, string(tagsJSON), string(item.Source), item.Confidence,
+	_, err = s.db.Exec(queries["InsertMemory"],
+		item.ID, item.Text, string(tagsJSON), string(item.Source), item.Confidence,
 		item.CreatedAt.Unix(), item.Provider, item.ModelID, item.Dim, embeddingBytes)
 
 	if err != nil {
@@ -215,11 +161,7 @@ func (s *Store) SaveMemory(item *MemoryItem) error {
 
 // GetAllMemories returns all memory items (for vector search).
 func (s *Store) GetAllMemories() ([]MemoryItem, error) {
-	rows, err := s.db.Query(`
-		SELECT id, text, tags, source, confidence, created_at, provider, model_id, dim, embedding
-		FROM memories
-		ORDER BY created_at DESC
-	`)
+	rows, err := s.db.Query(queries["SelectAllMemories"])
 	if err != nil {
 		return nil, fmt.Errorf("failed to query memories: %w", err)
 	}
@@ -292,24 +234,14 @@ func (s *Store) SearchMemories(queryEmbedding []float32, topK int, minSimilarity
 
 // DeleteMemory deletes a memory by ID.
 func (s *Store) DeleteMemory(id string) error {
-	_, err := s.db.Exec("DELETE FROM memories WHERE id = ?", id)
+	_, err := s.db.Exec(queries["DeleteMemory"], id)
 	return err
 }
 
 // SearchMemoriesFTS performs full-text search on memory text.
 // Returns top K results ordered by FTS rank.
 func (s *Store) SearchMemoriesFTS(query string, topK int) ([]MemoryFTSResult, error) {
-	rows, err := s.db.Query(`
-		SELECT m.id, m.text, m.tags, m.source, m.confidence, m.created_at,
-		       m.provider, m.model_id, m.dim, m.embedding,
-		       snippet(memories_fts, 0, '>>>', '<<<', '...', 32) as snippet,
-		       rank
-		FROM memories m
-		JOIN memories_fts fts ON m.rowid = fts.rowid
-		WHERE memories_fts MATCH ?
-		ORDER BY rank
-		LIMIT ?
-	`, query, topK)
+	rows, err := s.db.Query(queries["SearchMemoriesFTS"], query, topK)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search memories FTS: %w", err)
 	}
@@ -355,10 +287,8 @@ func (s *Store) SaveHistory(item *HistoryItem) error {
 		item.CreatedAt = time.Now()
 	}
 
-	_, err := s.db.Exec(`
-		INSERT INTO history (id, role, content, created_at, session_id)
-		VALUES (?, ?, ?, ?, ?)
-	`, item.ID, item.Role, item.Content, item.CreatedAt.Unix(), item.SessionID)
+	_, err := s.db.Exec(queries["InsertHistory"],
+		item.ID, item.Role, item.Content, item.CreatedAt.Unix(), item.SessionID)
 
 	if err != nil {
 		return fmt.Errorf("failed to save history: %w", err)
@@ -370,16 +300,7 @@ func (s *Store) SaveHistory(item *HistoryItem) error {
 // SearchHistory performs full-text search on history content.
 // Returns top K results ordered by FTS rank.
 func (s *Store) SearchHistory(query string, topK int) ([]HistorySearchResult, error) {
-	rows, err := s.db.Query(`
-		SELECT h.id, h.role, h.content, h.created_at, h.session_id,
-		       snippet(history_fts, 0, '>>>', '<<<', '...', 32) as snippet,
-		       rank
-		FROM history h
-		JOIN history_fts fts ON h.rowid = fts.rowid
-		WHERE history_fts MATCH ?
-		ORDER BY rank
-		LIMIT ?
-	`, query, topK)
+	rows, err := s.db.Query(queries["SearchHistoryFTS"], query, topK)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search history: %w", err)
 	}
@@ -412,12 +333,7 @@ func (s *Store) SearchHistory(query string, topK int) ([]HistorySearchResult, er
 
 // GetRecentHistory returns the most recent history items.
 func (s *Store) GetRecentHistory(limit int) ([]HistoryItem, error) {
-	rows, err := s.db.Query(`
-		SELECT id, role, content, created_at, session_id
-		FROM history
-		ORDER BY created_at DESC
-		LIMIT ?
-	`, limit)
+	rows, err := s.db.Query(queries["SelectRecentHistory"], limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query recent history: %w", err)
 	}
@@ -447,12 +363,12 @@ func (s *Store) GetRecentHistory(limit int) ([]HistoryItem, error) {
 
 // ClearHistory deletes all history items.
 func (s *Store) ClearHistory() error {
-	_, err := s.db.Exec("DELETE FROM history")
+	_, err := s.db.Exec(queries["ClearHistory"])
 	return err
 }
 
 // ClearMemories deletes all memory items.
 func (s *Store) ClearMemories() error {
-	_, err := s.db.Exec("DELETE FROM memories")
+	_, err := s.db.Exec(queries["ClearMemories"])
 	return err
 }
