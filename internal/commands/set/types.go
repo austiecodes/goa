@@ -1,9 +1,22 @@
 package set
 
 import (
+	"github.com/austiecodes/goa/internal/types"
 	"github.com/austiecodes/goa/internal/utils"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
+)
+
+// Main Menu Items
+const (
+	MenuItemProvider       = "provider"
+	MenuItemChatModel      = "chat-model"
+	MenuItemTitleModel     = "title-model"
+	MenuItemThinkModel     = "think-model"
+	MenuItemToolModel      = "tool-model"
+	MenuItemEmbeddingModel = "embedding-model"
+	MenuItemMemory         = "memory"
+	MenuItemExit           = "exit"
 )
 
 // Screen represents the current TUI screen
@@ -16,6 +29,7 @@ const (
 	ScreenModelProviderSelect
 	ScreenModelSelect
 	ScreenMemoryConfig
+	ScreenConfirmReindex
 )
 
 // ModelType represents which model is being configured
@@ -49,6 +63,8 @@ type Model struct {
 	ModelType        ModelType
 	Err              error
 	Quitting         bool
+	PendingModel     *types.Model
+	Reindexing       bool
 	Width            int
 	Height           int
 	SelectedProvider string

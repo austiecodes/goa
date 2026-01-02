@@ -1,8 +1,8 @@
 package set
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/austiecodes/goa/internal/utils"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func initialModel() Model {
@@ -89,6 +89,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateModelSelect(msg)
 	case ScreenMemoryConfig:
 		return m.updateMemoryConfig(msg)
+	case ScreenConfirmReindex:
+		return m.updateConfirmReindex(msg)
 	}
 
 	return m, nil
@@ -97,4 +99,3 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	return m.renderView()
 }
-

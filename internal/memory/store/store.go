@@ -101,6 +101,16 @@ func NewStore() (*Store, error) {
 	return store, nil
 }
 
+// NewStoreWithDB creates a new memory store with a provided database connection.
+// This is primarily used for testing.
+func NewStoreWithDB(db *sql.DB) (*Store, error) {
+	store := &Store{db: db}
+	if err := store.initSchema(); err != nil {
+		return nil, err
+	}
+	return store, nil
+}
+
 // Close closes the database connection.
 func (s *Store) Close() error {
 	if s.db != nil {
@@ -156,6 +166,16 @@ func (s *Store) SaveMemory(item *MemoryItem) error {
 		return fmt.Errorf("failed to save memory: %w", err)
 	}
 
+	return nil
+}
+
+// UpdateMemoryEmbedding updates the embedding for a specific memory.
+func (s *Store) UpdateMemoryEmbedding(id string, embedding []float32, modelID string, dim int, provider string) error {
+	embeddingBytes := VectorToBytes(embedding)
+	_, err := s.db.Exec(queries["UpdateMemoryEmbedding"], embeddingBytes, modelID, dim, provider, id)
+	if err != nil {
+		return fmt.Errorf("failed to update memory embedding: %w", err)
+	}
 	return nil
 }
 

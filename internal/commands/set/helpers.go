@@ -13,14 +13,14 @@ import (
 
 func createMainMenu() list.Model {
 	items := []list.Item{
-		MenuItem{title: "provider", desc: "Configure provider settings (API key, base URL)"},
-		MenuItem{title: "chat-model", desc: "Set default model for chat"},
-		MenuItem{title: "title-model", desc: "Set model for generating conversation titles"},
-		MenuItem{title: "think-model", desc: "Set model for thinking"},
-		MenuItem{title: "tool-model", desc: "Set model for tool/auxiliary prompts"},
-		MenuItem{title: "embedding-model", desc: "Set model for embeddings"},
-		MenuItem{title: "memory", desc: "Configure memory retrieval settings"},
-		MenuItem{title: "exit", desc: "Exit settings"},
+		MenuItem{title: MenuItemProvider, desc: "Configure provider settings (API key, base URL)"},
+		MenuItem{title: MenuItemChatModel, desc: "Set default model for chat"},
+		MenuItem{title: MenuItemTitleModel, desc: "Set model for generating conversation titles"},
+		MenuItem{title: MenuItemThinkModel, desc: "Set model for thinking"},
+		MenuItem{title: MenuItemToolModel, desc: "Set model for tool/auxiliary prompts"},
+		MenuItem{title: MenuItemEmbeddingModel, desc: "Set model for embeddings"},
+		MenuItem{title: MenuItemMemory, desc: "Configure memory retrieval settings"},
+		MenuItem{title: MenuItemExit, desc: "Exit settings"},
 	}
 
 	delegate := list.NewDefaultDelegate()

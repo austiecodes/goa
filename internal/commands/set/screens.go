@@ -17,35 +17,35 @@ func (m *Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			selected := m.List.SelectedItem().(MenuItem)
 			switch selected.Title() {
-			case "provider":
+			case MenuItemProvider:
 				m.List = createProviderList()
 				m.Screen = ScreenProviderSelect
-			case "chat-model":
+			case MenuItemChatModel:
 				m.ModelType = ModelTypeChat
 				m.List = createProviderList()
 				m.Screen = ScreenModelProviderSelect
-			case "title-model":
+			case MenuItemTitleModel:
 				m.ModelType = ModelTypeTitle
 				m.List = createProviderList()
 				m.Screen = ScreenModelProviderSelect
-			case "think-model":
+			case MenuItemThinkModel:
 				m.ModelType = ModelTypeThink
 				m.List = createProviderList()
 				m.Screen = ScreenModelProviderSelect
-			case "tool-model":
+			case MenuItemToolModel:
 				m.ModelType = ModelTypeTool
 				m.List = createProviderList()
 				m.Screen = ScreenModelProviderSelect
-			case "embedding-model":
+			case MenuItemEmbeddingModel:
 				m.ModelType = ModelTypeEmbedding
 				m.List = createProviderList()
 				m.Screen = ScreenModelProviderSelect
-			case "memory":
+			case MenuItemMemory:
 				m.TextInputs = createMemoryConfigInputs(m.Config)
 				m.FocusedInput = 0
 				m.Screen = ScreenMemoryConfig
 				return *m, m.TextInputs[0].Focus()
-			case "exit":
+			case MenuItemExit:
 				m.Quitting = true
 				return *m, tea.Quit
 			}
@@ -153,6 +153,22 @@ func (m *Model) updateModelSelect(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ModelID:  modelID,
 			}
 
+			if m.ModelType == ModelTypeEmbedding {
+				// Check if model actually changed
+				oldModel := m.Config.Model.EmbeddingModel
+				if oldModel != nil && oldModel.ModelID == newModel.ModelID && oldModel.Provider == newModel.Provider {
+					// No change, just go back
+					m.Screen = ScreenMainMenu
+					m.List = createMainMenu()
+					return *m, nil
+				}
+
+				// Model changed, ask for confirmation
+				m.PendingModel = newModel
+				m.Screen = ScreenConfirmReindex
+				return *m, nil
+			}
+
 			switch m.ModelType {
 			case ModelTypeChat:
 				m.Config.Model.ChatModel = newModel
@@ -162,8 +178,6 @@ func (m *Model) updateModelSelect(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Config.Model.ThinkModel = newModel
 			case ModelTypeTool:
 				m.Config.Model.ToolModel = newModel
-			case ModelTypeEmbedding:
-				m.Config.Model.EmbeddingModel = newModel
 			}
 
 			return *m, saveConfig(m.Config)
@@ -221,6 +235,45 @@ func (m *Model) updateMemoryConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.TextInputs[m.FocusedInput], cmd = m.TextInputs[m.FocusedInput].Update(msg)
 	return *m, cmd
+}
+
+func (m *Model) updateConfirmReindex(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.Reindexing {
+		// Handle reindexing completion
+		switch msg := msg.(type) {
+		case ReindexResultMsg:
+			m.Reindexing = false
+			if msg.Err != nil {
+				m.Err = msg.Err
+				// Go back to main menu with error
+				m.Screen = ScreenMainMenu
+				m.List = createMainMenu()
+			} else {
+				// Success, save everything; PendingModel is now the current model
+				m.Config.Model.EmbeddingModel = m.PendingModel
+				m.PendingModel = nil
+				return *m, saveConfig(m.Config)
+			}
+			return *m, nil
+		}
+		// Ignore keys while processing
+		return *m, nil
+	}
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "y", "Y":
+			m.Reindexing = true
+			return *m, reindexMemories(m.Config, *m.PendingModel)
+		case "n", "N", "esc":
+			m.PendingModel = nil
+			m.Screen = ScreenMainMenu
+			m.List = createMainMenu()
+			return *m, nil
+		}
+	}
+	return *m, nil
 }
 
 func (m *Model) renderView() string {
@@ -309,6 +362,21 @@ func (m *Model) renderView() string {
 			s.WriteString("\n\n")
 		}
 		s.WriteString(HelpStyle.Render("Press Enter to save, Esc to cancel, Tab/Shift+Tab to navigate"))
+
+	case ScreenConfirmReindex:
+		if m.Reindexing {
+			s.WriteString(TitleStyle.Render("Reindexing Memories..."))
+			s.WriteString("\n\n")
+			s.WriteString("Please wait while we update your memory embeddings.")
+			s.WriteString("\nThis may take a while depending on the number of memories.")
+		} else {
+			s.WriteString(TitleStyle.Render("Confirm Embedding Model Change"))
+			s.WriteString("\n\n")
+			s.WriteString("Changing the embedding model requires reindexing all existing memories.\n")
+			s.WriteString("This process will re-calculate embeddings for all items using the new model.\n\n")
+			s.WriteString("Do you want to proceed?\n\n")
+			s.WriteString(HelpStyle.Render("Press 'y' to confirm and reindex, 'n' to cancel"))
+		}
 	}
 
 	if m.Err != nil {

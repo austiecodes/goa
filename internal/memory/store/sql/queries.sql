@@ -17,6 +17,11 @@ ORDER BY created_at DESC;
 -- name: DeleteMemory
 DELETE FROM memories WHERE id = ?;
 
+-- name: UpdateMemoryEmbedding
+UPDATE memories
+SET embedding = ?, model_id = ?, dim = ?, provider = ?
+WHERE id = ?;
+
 -- name: SearchMemoriesFTS
 SELECT m.id, m.text, m.tags, m.source, m.confidence, m.created_at,
        m.provider, m.model_id, m.dim, m.embedding,
