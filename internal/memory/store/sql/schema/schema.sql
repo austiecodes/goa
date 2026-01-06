@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS memories (
     text TEXT NOT NULL,
     tags TEXT,
     source TEXT NOT NULL,
-    confidence REAL NOT NULL,
     created_at INTEGER NOT NULL,
     provider TEXT NOT NULL,
     model_id TEXT NOT NULL,

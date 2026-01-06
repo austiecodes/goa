@@ -120,14 +120,13 @@ func saveNewMemory(text string, tags []string) tea.Cmd {
 		defer memStore.Close()
 
 		item := &memtypes.MemoryItem{
-			Text:       text,
-			Tags:       tags,
-			Source:     memtypes.SourceExplicit,
-			Confidence: 1.0,
-			Provider:   embeddingModel.Provider,
-			ModelID:    embeddingModel.ModelID,
-			Dim:        len(normalizedEmbedding),
-			Embedding:  normalizedEmbedding,
+			Text:      text,
+			Tags:      tags,
+			Source:    memtypes.SourceExplicit,
+			Provider:  embeddingModel.Provider,
+			ModelID:   embeddingModel.ModelID,
+			Dim:       len(normalizedEmbedding),
+			Embedding: normalizedEmbedding,
 		}
 
 		err = memStore.SaveMemory(item)
@@ -174,14 +173,13 @@ func updateMemory(id, text string, tags []string) tea.Cmd {
 		_ = memStore.DeleteMemory(id)
 
 		item := &memtypes.MemoryItem{
-			Text:       text,
-			Tags:       tags,
-			Source:     memtypes.SourceExplicit,
-			Confidence: 1.0,
-			Provider:   embeddingModel.Provider,
-			ModelID:    embeddingModel.ModelID,
-			Dim:        len(normalizedEmbedding),
-			Embedding:  normalizedEmbedding,
+			Text:      text,
+			Tags:      tags,
+			Source:    memtypes.SourceExplicit,
+			Provider:  embeddingModel.Provider,
+			ModelID:   embeddingModel.ModelID,
+			Dim:       len(normalizedEmbedding),
+			Embedding: normalizedEmbedding,
 		}
 
 		err = memStore.SaveMemory(item)

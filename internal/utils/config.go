@@ -11,6 +11,14 @@ import (
 	"github.com/openai/openai-go/v3"
 )
 
+const (
+	GomorDir    = ".gomor"
+	SettingFile = "settings.json"
+	DBFile      = "memory.db"
+	HistoryDir  = "history"
+	LogsDir     = "logs"
+)
+
 // OpenAIProviderConfig represents the OpenAI provider configuration
 type OpenAIProviderConfig struct {
 	APIKey  string `json:"api_key"`
@@ -114,11 +122,26 @@ func GetConfigPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %v", err)
 	}
-	goaDir := filepath.Join(homeDir, consts.GoaDir)
-	if err := os.MkdirAll(goaDir, 0755); err != nil {
+	gDir := filepath.Join(homeDir, GomorDir)
+	if err := os.MkdirAll(gDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create gomor directory: %v", err)
 	}
-	return filepath.Join(goaDir, ".gomor"), nil
+	return filepath.Join(gDir, SettingFile), nil
+}
+
+// GetDBPath returns the path to the memory database file.
+func GetDBPath() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user home directory: %w", err)
+	}
+
+	gDir := filepath.Join(homeDir, GomorDir)
+	if err := os.MkdirAll(gDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create gomor directory: %w", err)
+	}
+
+	return filepath.Join(gDir, DBFile), nil
 }
 
 // LoadConfig loads the configuration from file

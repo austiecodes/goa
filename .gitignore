@@ -4,7 +4,6 @@
 
 # editor
 .vscode/
-.cursor/
 .idea/
 
 # build
@@ -15,5 +14,6 @@ build/
 logs/
 
 # agents
-.agent
+.agent/
+.cursor/
 

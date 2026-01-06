@@ -123,15 +123,14 @@ func TestRetriever_EndToEnd_FakeClients(t *testing.T) {
 	vec = NormalizeVector(vec)
 
 	item := &MemoryItem{
-		Text:       memText,
-		Tags:       []string{"c++", "polymorphism"},
-		Source:     SourceExplicit,
-		Confidence: 1.0,
-		Provider:   cfg.Model.EmbeddingModel.Provider,
-		ModelID:    cfg.Model.EmbeddingModel.ModelID,
-		Dim:        len(vec),
-		Embedding:  vec,
-		CreatedAt:  time.Now(),
+		Text:      memText,
+		Tags:      []string{"c++", "polymorphism"},
+		Source:    SourceExplicit,
+		Provider:  cfg.Model.EmbeddingModel.Provider,
+		ModelID:   cfg.Model.EmbeddingModel.ModelID,
+		Dim:       len(vec),
+		Embedding: vec,
+		CreatedAt: time.Now(),
 	}
 	if err := store.SaveMemory(item); err != nil {
 		t.Fatalf("save memory: %v", err)
@@ -253,15 +252,14 @@ func TestRetriever_RealClients_Debug(t *testing.T) {
 	}
 	testVec = NormalizeVector(testVec)
 	testItem := &MemoryItem{
-		Text:       testMemText,
-		Tags:       []string{"cpp", "oop", "test"},
-		Source:     SourceExplicit,
-		Confidence: 1.0,
-		Provider:   embeddingModel.Provider,
-		ModelID:    embeddingModel.ModelID,
-		Dim:        len(testVec),
-		Embedding:  testVec,
-		CreatedAt:  time.Now(),
+		Text:      testMemText,
+		Tags:      []string{"cpp", "oop", "test"},
+		Source:    SourceExplicit,
+		Provider:  embeddingModel.Provider,
+		ModelID:   embeddingModel.ModelID,
+		Dim:       len(testVec),
+		Embedding: testVec,
+		CreatedAt: time.Now(),
 	}
 	if err := store.SaveMemory(testItem); err != nil {
 		t.Fatalf("save test memory: %v", err)

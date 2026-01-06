@@ -205,11 +205,6 @@ func (m *Model) renderView() string {
 			s.WriteString(DetailValueStyle.Render(string(m.SelectedMemory.Source)))
 			s.WriteString("\n\n")
 
-			s.WriteString(DetailLabelStyle.Render("Confidence:"))
-			s.WriteString(" ")
-			s.WriteString(DetailValueStyle.Render(fmt.Sprintf("%.2f", m.SelectedMemory.Confidence)))
-			s.WriteString("\n\n")
-
 			if len(m.SelectedMemory.Tags) > 0 {
 				s.WriteString(DetailLabelStyle.Render("Tags:"))
 				s.WriteString(" ")
@@ -274,4 +269,3 @@ func (m *Model) renderView() string {
 
 	return s.String()
 }
-

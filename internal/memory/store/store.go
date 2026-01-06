@@ -5,54 +5,16 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 
-	"github.com/austiecodes/gomor/internal/consts"
 	"github.com/austiecodes/gomor/internal/memory/memtypes"
 	"github.com/austiecodes/gomor/internal/memory/memutils"
+	"github.com/austiecodes/gomor/internal/utils"
 )
-
-//go:embed sql/schema.sql
-var schemaSQL string
-
-//go:embed sql/queries.sql
-var queriesSQL string
-
-// queries holds parsed SQL queries by name
-var queries map[string]string
-
-func init() {
-	queries = parseQueries(queriesSQL)
-}
-
-// parseQueries extracts named queries from a SQL file.
-// Queries are marked with "-- name: QueryName" comments.
-func parseQueries(content string) map[string]string {
-	result := make(map[string]string)
-	re := regexp.MustCompile(`(?m)^--\s*name:\s*(\w+)\s*$`)
-	matches := re.FindAllStringSubmatchIndex(content, -1)
-
-	for i, match := range matches {
-		name := content[match[2]:match[3]]
-		start := match[1]
-		end := len(content)
-		if i+1 < len(matches) {
-			end = matches[i+1][0]
-		}
-		query := strings.TrimSpace(content[start:end])
-		result[name] = query
-	}
-
-	return result
-}
 
 // Re-export types from memtypes for convenience
 type MemoryItem = memtypes.MemoryItem
@@ -62,6 +24,7 @@ type SearchResult = memtypes.SearchResult
 type MemoryFTSResult = memtypes.MemoryFTSResult
 type HistorySearchResult = memtypes.HistorySearchResult
 
+// Re-export constants from memtypes for convenience
 const (
 	SourceExplicit  = memtypes.SourceExplicit
 	SourceExtracted = memtypes.SourceExtracted
@@ -82,7 +45,7 @@ type Store struct {
 
 // NewStore creates a new memory store, initializing the database if needed.
 func NewStore() (*Store, error) {
-	dbPath, err := getDBPath()
+	dbPath, err := utils.GetDBPath()
 	if err != nil {
 		return nil, err
 	}
@@ -119,21 +82,6 @@ func (s *Store) Close() error {
 	return nil
 }
 
-// getDBPath returns the path to the memory database file.
-func getDBPath() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get user home directory: %w", err)
-	}
-
-	goaDir := filepath.Join(homeDir, consts.GoaDir)
-	if err := os.MkdirAll(goaDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create gomor directory: %w", err)
-	}
-
-	return filepath.Join(goaDir, "memory.db"), nil
-}
-
 // initSchema creates the database tables if they don't exist.
 func (s *Store) initSchema() error {
 	if _, err := s.db.Exec(schemaSQL); err != nil {
@@ -158,8 +106,8 @@ func (s *Store) SaveMemory(item *MemoryItem) error {
 
 	embeddingBytes := VectorToBytes(item.Embedding)
 
-	_, err = s.db.Exec(queries["InsertMemory"],
-		item.ID, item.Text, string(tagsJSON), string(item.Source), item.Confidence,
+	_, err = s.db.Exec(insertMemorySQL,
+		item.ID, item.Text, string(tagsJSON), string(item.Source),
 		item.CreatedAt.Unix(), item.Provider, item.ModelID, item.Dim, embeddingBytes)
 
 	if err != nil {
@@ -172,7 +120,7 @@ func (s *Store) SaveMemory(item *MemoryItem) error {
 // UpdateMemoryEmbedding updates the embedding for a specific memory.
 func (s *Store) UpdateMemoryEmbedding(id string, embedding []float32, modelID string, dim int, provider string) error {
 	embeddingBytes := VectorToBytes(embedding)
-	_, err := s.db.Exec(queries["UpdateMemoryEmbedding"], embeddingBytes, modelID, dim, provider, id)
+	_, err := s.db.Exec(updateMemoryEmbeddingSQL, embeddingBytes, modelID, dim, provider, id)
 	if err != nil {
 		return fmt.Errorf("failed to update memory embedding: %w", err)
 	}
@@ -181,7 +129,7 @@ func (s *Store) UpdateMemoryEmbedding(id string, embedding []float32, modelID st
 
 // GetAllMemories returns all memory items (for vector search).
 func (s *Store) GetAllMemories() ([]MemoryItem, error) {
-	rows, err := s.db.Query(queries["SelectAllMemories"])
+	rows, err := s.db.Query(selectAllMemoriesSQL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query memories: %w", err)
 	}
@@ -195,7 +143,7 @@ func (s *Store) GetAllMemories() ([]MemoryItem, error) {
 		var embeddingBytes []byte
 		var source string
 
-		err := rows.Scan(&item.ID, &item.Text, &tagsJSON, &source, &item.Confidence,
+		err := rows.Scan(&item.ID, &item.Text, &tagsJSON, &source,
 			&createdAtUnix, &item.Provider, &item.ModelID, &item.Dim, &embeddingBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan memory row: %w", err)
@@ -254,14 +202,14 @@ func (s *Store) SearchMemories(queryEmbedding []float32, topK int, minSimilarity
 
 // DeleteMemory deletes a memory by ID.
 func (s *Store) DeleteMemory(id string) error {
-	_, err := s.db.Exec(queries["DeleteMemory"], id)
+	_, err := s.db.Exec(deleteMemorySQL, id)
 	return err
 }
 
 // SearchMemoriesFTS performs full-text search on memory text.
 // Returns top K results ordered by FTS rank.
 func (s *Store) SearchMemoriesFTS(query string, topK int) ([]MemoryFTSResult, error) {
-	rows, err := s.db.Query(queries["SearchMemoriesFTS"], query, topK)
+	rows, err := s.db.Query(searchMemoriesFTSSQL, query, topK)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search memories FTS: %w", err)
 	}
@@ -276,7 +224,7 @@ func (s *Store) SearchMemoriesFTS(query string, topK int) ([]MemoryFTSResult, er
 		var embeddingBytes []byte
 		var source string
 
-		err := rows.Scan(&item.ID, &item.Text, &tagsJSON, &source, &item.Confidence,
+		err := rows.Scan(&item.ID, &item.Text, &tagsJSON, &source,
 			&createdAtUnix, &item.Provider, &item.ModelID, &item.Dim, &embeddingBytes,
 			&result.Snippet, &result.Rank)
 		if err != nil {
@@ -307,7 +255,7 @@ func (s *Store) SaveHistory(item *HistoryItem) error {
 		item.CreatedAt = time.Now()
 	}
 
-	_, err := s.db.Exec(queries["InsertHistory"],
+	_, err := s.db.Exec(insertHistorySQL,
 		item.ID, item.Role, item.Content, item.CreatedAt.Unix(), item.SessionID)
 
 	if err != nil {
@@ -320,7 +268,7 @@ func (s *Store) SaveHistory(item *HistoryItem) error {
 // SearchHistory performs full-text search on history content.
 // Returns top K results ordered by FTS rank.
 func (s *Store) SearchHistory(query string, topK int) ([]HistorySearchResult, error) {
-	rows, err := s.db.Query(queries["SearchHistoryFTS"], query, topK)
+	rows, err := s.db.Query(searchHistoryFTSSQL, query, topK)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search history: %w", err)
 	}
@@ -353,7 +301,7 @@ func (s *Store) SearchHistory(query string, topK int) ([]HistorySearchResult, er
 
 // GetRecentHistory returns the most recent history items.
 func (s *Store) GetRecentHistory(limit int) ([]HistoryItem, error) {
-	rows, err := s.db.Query(queries["SelectRecentHistory"], limit)
+	rows, err := s.db.Query(selectRecentHistorySQL, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query recent history: %w", err)
 	}
@@ -383,12 +331,12 @@ func (s *Store) GetRecentHistory(limit int) ([]HistoryItem, error) {
 
 // ClearHistory deletes all history items.
 func (s *Store) ClearHistory() error {
-	_, err := s.db.Exec(queries["ClearHistory"])
+	_, err := s.db.Exec(clearHistorySQL)
 	return err
 }
 
 // ClearMemories deletes all memory items.
 func (s *Store) ClearMemories() error {
-	_, err := s.db.Exec(queries["ClearMemories"])
+	_, err := s.db.Exec(clearMemoriesSQL)
 	return err
 }

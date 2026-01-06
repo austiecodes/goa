@@ -71,11 +71,10 @@ func TestReindexMemories_Integration(t *testing.T) {
 			Source:    store.SourceExplicit,
 			CreatedAt: time.Now(),
 			// Initial dummy embedding (to prove it changes)
-			Embedding:  []float32{0.0, 0.0},
-			Confidence: 1.0,
-			Provider:   "dummy",
-			ModelID:    "dummy",
-			Dim:        2,
+			Embedding: []float32{0.0, 0.0},
+			Provider:  "dummy",
+			ModelID:   "dummy",
+			Dim:       2,
 		}
 		if err := storeInstance.SaveMemory(item); err != nil {
 			t.Fatalf("failed to save seed memory: %v", err)

@@ -14,16 +14,15 @@ const (
 
 // MemoryItem represents a single preference/fact stored in memory.
 type MemoryItem struct {
-	ID         string       `json:"id"`
-	Text       string       `json:"text"`
-	Tags       []string     `json:"tags,omitempty"`
-	Source     MemorySource `json:"source"`
-	Confidence float64      `json:"confidence"`
-	CreatedAt  time.Time    `json:"created_at"`
-	Provider   string       `json:"provider"`
-	ModelID    string       `json:"model_id"`
-	Dim        int          `json:"dim"`
-	Embedding  []float32    `json:"-"` // stored as blob, not JSON
+	ID        string       `json:"id"`
+	Text      string       `json:"text"`
+	Tags      []string     `json:"tags,omitempty"`
+	Source    MemorySource `json:"source"`
+	CreatedAt time.Time    `json:"created_at"`
+	Provider  string       `json:"provider"`
+	ModelID   string       `json:"model_id"`
+	Dim       int          `json:"dim"`
+	Embedding []float32    `json:"-"` // stored as blob, not JSON
 }
 
 // HistoryItem represents a conversation turn stored in history.
